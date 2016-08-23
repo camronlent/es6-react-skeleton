@@ -8,6 +8,10 @@ const sourcemaps = require("gulp-sourcemaps");
 const SourceStream = require("vinyl-source-stream");
 const SourceBuffer = require("vinyl-buffer");
 
+/** begin: config **/
+
+let debug = true;
+
 let jsEntryPoint = "src/code/index.js";
 let jsWatch = "src/code/**/*.js";
 let sassWatch = "src/style/**/*.scss";
@@ -20,18 +24,28 @@ let vendorName = "vendor.min.js";
 let bundleDir = "build/js";
 let bundleName = "bundle.min.js";
 
-function sourceBundle() {
-    let source = browserify({"entries": jsEntryPoint, "debug": true});
+/** end: config **/
+
+function sourceBundle(doBundle) {
+    let source = browserify({"entries": jsEntryPoint, "debug": debug});
     source.external(["react", "react-dom", "whatwg-fetch"]);
     return doBundle(source, bundleName, bundleDir);
 }
 
-function libBundle() {
-    let lib = browserify({ "require": ["react", "react-dom", "whatwg-fetch"], "debug": true});
+function libBundle(doBundle) {
+    let lib = browserify({ "require": ["react", "react-dom", "whatwg-fetch"], "debug": debug});
     return doBundle(lib, vendorName, vendorDir);
 }
 
 function doBundle(bundle, file, outDir) {
+    return bundle
+        .transform("babelify", {"presets": ["es2015", "stage-1", "react"]})
+        .bundle().on("error", logError)
+        .pipe(SourceStream(file))
+        .pipe(gulp.dest(outDir));
+}
+
+function doBundleMin(bundle, file, outDir) {
     return bundle
         .transform("babelify", {"presets": ["es2015", "stage-1", "react"]})
         .bundle().on("error", logError)
@@ -42,11 +56,11 @@ function doBundle(bundle, file, outDir) {
 }
 
 gulp.task("scripts", function() {
-    return sourceBundle();
+    return sourceBundle(debug ? doBundle : doBundleMin);
 });
 
 gulp.task("scripts-vendors", function() {
-    return libBundle();
+    return libBundle(debug ? doBundle : doBundleMin);
 });
 
 gulp.task("styles", function() {
