@@ -4,7 +4,6 @@ const browserify = require("browserify");
 const uglify = require("gulp-uglify");
 const sass = require("gulp-sass");
 const sourcemaps = require("gulp-sourcemaps");
-
 const SourceStream = require("vinyl-source-stream");
 const SourceBuffer = require("vinyl-buffer");
 
@@ -18,49 +17,54 @@ let sassWatch = "src/style/**/*.scss";
 
 let sassOut = "build/css";
 
-let vendorDir = "build/js";
+let vendorOut = "build/js";
 let vendorName = "vendor.min.js";
 
-let bundleDir = "build/js";
-let bundleName = "bundle.min.js";
+let sourceOut = "build/js";
+let sourceName = "bundle.min.js";
 
 /** end: config **/
 
-function sourceBundle(doBundle) {
+function sourceBundle(debug) {
     let source = browserify({"entries": jsEntryPoint, "debug": debug});
     source.external(["react", "react-dom", "whatwg-fetch"]);
-    return doBundle(source, bundleName, bundleDir);
+    return doBundle(debug, source, sourceOut, sourceName);
 }
 
-function libBundle(doBundle) {
-    let lib = browserify({ "require": ["react", "react-dom", "whatwg-fetch"], "debug": debug});
-    return doBundle(lib, vendorName, vendorDir);
+function vendorBundle(debug) {
+    let vendor = browserify({ "require": ["react", "react-dom", "whatwg-fetch"], "debug": debug});
+    return doBundle(debug, vendor, vendorOut, vendorName);
 }
 
-function doBundle(bundle, file, outDir) {
-    return bundle
-        .transform("babelify", {"presets": ["es2015", "stage-1", "react"]})
-        .bundle().on("error", logError)
-        .pipe(SourceStream(file))
-        .pipe(gulp.dest(outDir));
+function doBundle(debug, bundle, out, file) {
+    let bundler = debug ? doBundleDebug : doBundleRelease;
+    return bundler(bundle, file)
+        .pipe(gulp.dest(out));
 }
 
-function doBundleMin(bundle, file, outDir) {
-    return bundle
-        .transform("babelify", {"presets": ["es2015", "stage-1", "react"]})
-        .bundle().on("error", logError)
-        .pipe(SourceStream(file))
+function doBundleDebug(bundle, file) {
+    return bundler(bundle, file);
+}
+
+function doBundleRelease(bundle, file) {
+    return bundler(bundle, file)
         .pipe(SourceBuffer())
-        .pipe(uglify())
-        .pipe(gulp.dest(outDir));
+        .pipe(uglify());
+}
+
+function bundler(bundle, file) {
+    return bundle
+        .transform("babelify", {"presets": ["es2015", "stage-1", "react"]})
+        .bundle().on("error", logError)
+        .pipe(SourceStream(file));
 }
 
 gulp.task("scripts", function() {
-    return sourceBundle(debug ? doBundle : doBundleMin);
+    return sourceBundle(debug);
 });
 
 gulp.task("scripts-vendors", function() {
-    return libBundle(debug ? doBundle : doBundleMin);
+    return vendorBundle(debug);
 });
 
 gulp.task("styles", function() {
