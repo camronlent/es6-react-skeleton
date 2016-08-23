@@ -78,7 +78,7 @@ gulp.task("default", ["build"]);
 
 gulp.task("watch", ["build"], function() {
     gulp.watch(jsWatch, ["scripts"]).on("change", logEvent).on("error", util.log);
-    gulp.watch(cssWatch, ["styles"]).on("change", logEvent).on("error", util.log);
+    gulp.watch(sassWatch, ["styles"]).on("change", logEvent).on("error", util.log);
 });
 
 function logError(error) {
